@@ -46,6 +46,39 @@ const contactos = [
         else res.send(contacto); 
     });
 
+    //post contact
+    app.post("/api/contactos", (req, res) => {
+        const { name, telefono, email } = req.body; 
+        const emailExists = contactos.some(contacto => contacto.email === email);
+        if (emailExists) {
+            return res.status(400).send("El correo ya está en uso.");
+        }
+        const nuevoContacto = {
+            id: contactos.length + 1, // Asigna un nuevo ID
+            name,
+            telefono,
+            email
+        };
+        contactos.push(nuevoContacto);
+        res.status(201).send(nuevoContacto);
+        });
+    // delete contacto
+    app.delete("/api/contactos/:id", (req, res) => {
+        const id = parseInt(req.params.id);
+        
+        if (!isNaN(id)) {
+            const index = contactos.findIndex(x => x.id === id);
+            if (index!== -1) {
+                contactos.splice(index, 1);
+                res.send(`El contacto con ID: ${id} ha sido eliminado.`);
+            } else {
+                res.status(404).send(`No se encontró el contacto con ID: ${id}`);
+            }
+        } else {
+            res.status(400).send("ID no válido");
+        }
+    });
+
     // si el param id llega undefined responder con un 404 Not Found
     app.get("/api/contactos/:id", (req, res) => {
         const id = req.params.id;
@@ -63,8 +96,59 @@ const contactos = [
         res.send(contacto);
     });
     
+    app.put("/api/contactos/:id", (req, res) => {
+        const id = parseInt(req.params.id);
+        const { name, telefono, email } = req.body;
+    
+        // Verificar si el contacto existe
+        const contacto = contactos.find(x => x.id === id);
+        if (!contacto) {
+            return res.status(404).send("Contacto no encontrado.");
+        }
+    
+        // Verificar duplicación de correo (excluyendo el contacto actual)
+        const emailExists = contactos.some(x => x.email === email && x.id !== id);
+        if (emailExists) {
+            return res.status(400).send("El correo ya está en uso.");
+        }
+    
+        // Actualizar el contacto
+        contacto.name = name;
+        contacto.telefono = telefono;
+        contacto.email = email;
+    
+        // Devolver el contacto actualizado
+        res.send(contacto);
+    });
 
 
+    app.get("/api/contactos", (req, res) => {
+        let resultado = contactos;
+    
+        // Filtrar por nombre si se proporciona
+        if (req.query.name) {
+            resultado = resultado.filter(contacto => 
+                contacto.name.toLowerCase().includes(req.query.name.toLowerCase())
+            );
+        }
+    
+        // Filtrar por correo si se proporciona
+        if (req.query.email) {
+            resultado = resultado.filter(contacto => 
+                contacto.email.toLowerCase() === req.query.email.toLowerCase()
+            );
+        }
+    
+        // Si no se encuentran resultados, se puede manejar el caso
+        if (resultado.length === 0) {
+            return res.status(404).send("No se encontraron contactos que coincidan con los criterios.");
+        }
+    
+        // Devolver los contactos filtrados
+        res.send(resultado);
+    });
+    
+    
     const port = process.env.port || 5100;
     
     app.listen(port, () => console.log(`Estoy arriba klk en el port: ${port} ...`))
